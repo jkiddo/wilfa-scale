@@ -147,9 +147,8 @@ class WilfaScaleCoordinator:
         self._notify_listeners()
         self._schedule_reconnect()
 
-    async def connect(self) -> bool:
-        """Connect to the Wilfa scale via BLE."""
-        self._cancel_reconnect()
+    async def _try_connect(self) -> bool:
+        """Attempt a single BLE connection to the scale."""
         try:
             ble_device = self._get_ble_device()
             if not ble_device:
@@ -186,6 +185,11 @@ class WilfaScaleCoordinator:
             self.data.connected = False
             self._notify_listeners()
             return False
+
+    async def connect(self) -> bool:
+        """Connect to the scale, cancelling any existing reconnect loop first."""
+        self._cancel_reconnect()
+        return await self._try_connect()
 
     async def _disconnect_client(self) -> None:
         """Disconnect the BLE client without triggering reconnect."""
@@ -238,19 +242,22 @@ class WilfaScaleCoordinator:
                 "Attempting to reconnect to Wilfa scale in %s seconds",
                 RECONNECT_INTERVAL,
             )
-            await asyncio.sleep(RECONNECT_INTERVAL)
+            try:
+                await asyncio.sleep(RECONNECT_INTERVAL)
+            except asyncio.CancelledError:
+                return
             if self._shutting_down:
                 break
             if self._client and self._client.is_connected:
                 break
-            connected = await self.connect()
+            connected = await self._try_connect()
             if connected:
                 _LOGGER.info("Successfully reconnected to Wilfa scale")
                 break
 
     async def start(self) -> None:
         """Start the coordinator - connect or schedule reconnect."""
-        connected = await self.connect()
+        connected = await self._try_connect()
         if not connected:
             _LOGGER.info(
                 "Wilfa scale not available yet, will keep trying every %ss",

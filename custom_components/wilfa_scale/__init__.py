@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ADDRESS, Platform
 from homeassistant.core import HomeAssistant
@@ -21,18 +20,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wilfa Svart Scale from a config entry."""
     address: str = entry.data[CONF_ADDRESS]
 
-    ble_device = bluetooth.async_ble_device_from_address(
-        hass, address, connectable=True
-    )
-    if not ble_device:
-        _LOGGER.error("Could not find Wilfa scale with address %s", address)
-        return False
-
-    coordinator = WilfaScaleCoordinator(hass, ble_device)
-    connected = await coordinator.connect()
-    if not connected:
-        _LOGGER.error("Failed to connect to Wilfa scale at %s", address)
-        return False
+    coordinator = WilfaScaleCoordinator(hass, address)
+    await coordinator.start()
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator

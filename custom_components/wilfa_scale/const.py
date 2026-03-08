@@ -27,7 +27,3 @@ UNIT_MAP = {
     "01": "oz",
     "02": "lb",
 }
-
-# Timeouts
-CONNECTION_TIMEOUT = 10
-DISCONNECT_TIMEOUT = 10
